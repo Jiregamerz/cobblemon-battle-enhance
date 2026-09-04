@@ -18,7 +18,7 @@ public abstract class MinecraftClientMixin {
 
         String className = screen.getClass().getName();
         if (className.contains("BattleOverlay") || className.contains("BattleMenu") || className.contains("BattleChoice")) {
-            BattleEnhanceMod.LOGGER.info("Blocked Cobblemon battle screen: {}", className);
+            // Cancel Cobblemon battle screen when our mode is active
             ci.cancel();
         }
     }
