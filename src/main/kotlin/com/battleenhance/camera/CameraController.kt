@@ -1,7 +1,6 @@
 package com.battleenhance.camera
 
 import com.battleenhance.BattleEnhanceMod
-import com.battleenhance.integration.CobblemonBridge
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.CameraType
 import net.minecraft.client.Minecraft
@@ -116,10 +115,5 @@ object CameraController {
             oBobField.isAccessible = true
             oBobField.setDouble(camera, 0.0)
         } catch (_: Exception) { }
-    }
-
-    fun findPlayerPokemon(player: Player): Entity? {
-        if (!CobblemonBridge.isLoaded()) return null
-        return CobblemonBridge.findPlayerPokemon(player)
     }
 }
