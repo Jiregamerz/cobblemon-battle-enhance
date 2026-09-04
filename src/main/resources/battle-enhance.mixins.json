@@ -9,7 +9,6 @@
     "LivingEntityMixin"
   ],
   "client": [
-    "ClientPlayerEntityMixin",
     "InGameHudMixin",
     "MinecraftClientMixin"
   ],
