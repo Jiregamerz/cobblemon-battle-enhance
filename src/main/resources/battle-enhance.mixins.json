@@ -9,7 +9,6 @@
     "LivingEntityMixin"
   ],
   "client": [
-    "InGameHudMixin",
     "MinecraftClientMixin"
   ],
   "injectors": {
