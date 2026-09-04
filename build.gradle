@@ -10,10 +10,6 @@ group = project.maven_group
 repositories {
     mavenCentral()
     maven {
-        name = 'Cobblemon'
-        url = 'https://repo.cobblemon.com/releases'
-    }
-    maven {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven'
     }
@@ -28,7 +24,7 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    modCompileOnly "com.cobblemon:fabric:${project.cobblemon_version}"
+    modCompileOnly "maven.modrinth:cobblemon:${project.cobblemon_version}"
 }
 
 processResources {
