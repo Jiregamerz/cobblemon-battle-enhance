@@ -16,7 +16,7 @@ public abstract class MinecraftClientMixin {
     private void onTick(CallbackInfo ci) {
         Minecraft self = (Minecraft) (Object) this;
 
-        if (BattleEnhanceMod.INSTANCE.getInBattle()) {
+        if (BattleEnhanceMod.getInBattle()) {
             if (self.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
                 self.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             }

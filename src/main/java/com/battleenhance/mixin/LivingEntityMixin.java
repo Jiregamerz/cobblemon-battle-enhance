@@ -17,12 +17,12 @@ public abstract class LivingEntityMixin {
         LivingEntity self = (LivingEntity) (Object) this;
 
         if (self.level().isClientSide() && cir.getReturnValue()) {
-            Object controlled = BattleEnhanceMod.INSTANCE.getControlledPokemon();
+            Object controlled = BattleEnhanceMod.getControlledPokemon();
             if (self == controlled) {
                 BattleHUDRenderer.INSTANCE.addDamage(amount);
             }
 
-            Object enemy = BattleEnhanceMod.INSTANCE.getBattleTarget();
+            Object enemy = BattleEnhanceMod.getBattleTarget();
             if (self == enemy) {
                 BattleHUDRenderer.INSTANCE.addEnemyDamage(amount);
             }

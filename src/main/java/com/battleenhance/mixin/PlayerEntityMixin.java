@@ -16,9 +16,9 @@ public abstract class PlayerEntityMixin {
     private void onTick(CallbackInfo ci) {
         Player self = (Player) (Object) this;
         if (!self.level().isClientSide()) return;
-        if (!BattleEnhanceMod.INSTANCE.getInBattle()) return;
+        if (!BattleEnhanceMod.getInBattle()) return;
 
-        Object pokemon = BattleEnhanceMod.INSTANCE.getControlledPokemon();
+        Object pokemon = BattleEnhanceMod.getControlledPokemon();
         if (pokemon instanceof Mob mob) {
             double dx = 0;
             double dz = 0;
