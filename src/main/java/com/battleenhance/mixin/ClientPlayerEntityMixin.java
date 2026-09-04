@@ -17,7 +17,7 @@ public abstract class ClientPlayerEntityMixin {
             if (parts.length >= 2) {
                 String command = parts[1];
                 if (command.equals("start")) {
-                    BattleEnhanceMod.LOGGER.info("Manual battle start requested");
+                    BattleEnhanceMod.getLOGGER().info("Manual battle start requested");
                     ci.cancel();
                 } else if (command.equals("stop")) {
                     BattleEnhanceMod.INSTANCE.endBattle();

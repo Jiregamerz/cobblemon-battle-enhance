@@ -20,10 +20,10 @@ public abstract class GameRendererMixin {
         if (target == null) return;
 
         Camera camera = cir.getReturnValue();
-        camera.setPosition(
+        camera.setPosition(new net.minecraft.world.phys.Vec3(
             target.getX(),
             target.getY() + 2.0,
             target.getZ()
-        );
+        ));
     }
 }
