@@ -1,6 +1,6 @@
 package com.battleenhance.mixin;
 
-import com.battleenhance.hud.BattleHUDRenderer;
+import com.battleenhance.BattleEnhanceMod;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Gui;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +13,6 @@ public abstract class InGameHudMixin {
 
     @Inject(method = "render", at = @At("RETURN"))
     private void onRender(GuiGraphics context, float tickDelta, CallbackInfo ci) {
-        // Battle HUD is rendered via HudRenderCallback
+        // HUD is rendered via HudRenderCallback in BattleHUDRenderer
     }
 }

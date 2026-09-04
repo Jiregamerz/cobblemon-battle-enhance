@@ -1,5 +1,6 @@
 package com.battleenhance.mixin;
 
+import com.battleenhance.BattleEnhanceMod;
 import com.battleenhance.camera.CameraController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.CameraType;
@@ -12,15 +13,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MinecraftClientMixin {
 
     @Inject(method = "tick", at = @At("HEAD"))
-    private void onRunTick(CallbackInfo ci) {
-        // Handle game logic during battle
-    }
-
-    @Inject(method = "tick", at = @At("HEAD"))
-    private void onRender(CallbackInfo ci) {
+    private void onTick(CallbackInfo ci) {
         Minecraft self = (Minecraft) (Object) this;
 
-        if (CameraController.INSTANCE.isActive()) {
+        if (BattleEnhanceMod.INSTANCE.getInBattle()) {
             if (self.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
                 self.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             }

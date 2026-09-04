@@ -3,7 +3,7 @@
   "id": "battleenhance",
   "version": "${version}",
   "name": "Cobblemon Battle Enhance",
-  "description": "Enhanced Pokemon battles with camera transitions, real-time AI, and HUD",
+  "description": "Real-time Pokemon battles - control your Pokemon directly with WASD, like the Synchro Machine",
   "authors": ["You"],
   "contact": {},
   "license": "MIT",

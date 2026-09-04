@@ -2,187 +2,188 @@ package com.battleenhance.ai
 
 import com.battleenhance.BattleEnhanceMod
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.player.Player
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.atan2
 
 object PokemonAIManager {
-    private val activeBattles = ConcurrentHashMap<UUID, BattleAIState>()
+    private val activeBattles = ConcurrentHashMap<UUID, AIState>()
 
-    const val STATE_IDLE = 0
-    const val STATE_CHASING = 1
-    const val STATE_ATTACKING = 2
-    const val STATE_DODGING = 3
-    const val STATE_FLEEING = 4
+    private const val STATE_IDLE = 0
+    private const val STATE_CHASING = 1
+    private const val STATE_ATTACKING = 2
+    private const val STATE_DODGING = 3
+    private const val STATE_FLEEING = 4
+    private const val STATE_COOLDOWN = 5
+
+    private const val ATTACK_RANGE = 3.5
+    private const val FLEE_HEALTH_PERCENT = 0.25f
+    private const val DODGE_CHANCE = 0.04
+    private const val ATTACK_COOLDOWN_MIN = 30
+    private const val ATTACK_COOLDOWN_MAX = 80
+    private const val DODGE_DURATION = 15
+    private const val COOLDOWN_DURATION = 20
+    private const val CHASE_SPEED = 0.28
+    private const val ATTACK_DAMAGE = 8.0f
+    private const val FLEE_SPEED = 0.35
 
     fun register() {
-        ServerTickEvents.END_SERVER_TICK.register {
-            activeBattles.forEach { (_, state) ->
-                updateAI(state)
+        ServerTickEvents.END_SERVER_TICK.register { server ->
+            for ((uuid, state) in activeBattles) {
+                if (!state.target.isAlive || state.pokemon.isRemoved || state.pokemon.level().isClientSide) {
+                    continue
+                }
+                tickAI(state)
             }
 
-            val iterator = activeBattles.entries.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
+            val iter = activeBattles.entries.iterator()
+            while (iter.hasNext()) {
+                val entry = iter.next()
                 if (!entry.value.target.isAlive || entry.value.pokemon.isRemoved) {
-                    iterator.remove()
+                    iter.remove()
                 }
             }
         }
     }
 
-    fun startBattle(pokemon: LivingEntity, target: Player) {
-        val state = BattleAIState(
-            pokemon = pokemon,
-            target = target,
-            state = STATE_CHASING,
-            isWild = true
+    fun startBattle(enemy: LivingEntity, targetPlayer: Player) {
+        val state = AIState(
+            pokemon = enemy,
+            target = targetPlayer,
+            state = STATE_CHASING
         )
-        activeBattles[pokemon.uuid] = state
-        BattleEnhanceMod.LOGGER.info("AI started for Pokemon: ${pokemon.name?.string}")
+        activeBattles[enemy.uuid] = state
+        BattleEnhanceMod.LOGGER.info("AI started for: ${enemy.name?.string}")
     }
 
     fun endAllBattles() {
         activeBattles.clear()
     }
 
-    private fun updateAI(state: BattleAIState) {
+    private fun tickAI(state: AIState) {
+        if (state.cooldown > 0) { state.cooldown--; return }
+        if (state.dodgeTimer > 0) { state.dodgeTimer--; return }
+
         val pokemon = state.pokemon
         val target = state.target
-
-        if (!pokemon.isAlive || !target.isAlive || pokemon.isRemoved) {
-            return
-        }
-
-        if (state.attackCooldown > 0) state.attackCooldown--
-        if (state.dodgeCooldown > 0) state.dodgeCooldown--
-
-        val distance = pokemon.distanceToSqr(target)
+        val dist = pokemon.distanceTo(target)
 
         when (state.state) {
-            STATE_CHASING -> updateChasing(state, distance)
-            STATE_ATTACKING -> updateAttacking(state, distance)
-            STATE_DODGING -> updateDodging(state, distance)
-            STATE_FLEEING -> updateFleeing(state, distance)
+            STATE_CHASING -> tickChase(state, dist)
+            STATE_ATTACKING -> tickAttack(state, dist)
+            STATE_DODGING -> tickDodge(state)
+            STATE_FLEEING -> tickFlee(state, dist)
         }
     }
 
-    private fun updateChasing(state: BattleAIState, distance: Double) {
-        val pokemon = state.pokemon as? Mob ?: return
+    private fun tickChase(state: AIState, dist: Double) {
+        val mob = state.pokemon as? Mob ?: return
 
-        pokemon.navigation.moveTo(state.target, 1.2)
+        mob.navigation.moveTo(state.target, CHASE_SPEED)
+        faceEntity(state.pokemon, state.target)
 
-        if (distance < 4.0) {
+        if (dist <= ATTACK_RANGE) {
             state.state = STATE_ATTACKING
         }
 
-        if (state.dodgeCooldown <= 0 && Math.random() < 0.05) {
-            startDodging(state)
+        if (Math.random() < DODGE_CHANCE && state.dodgeTimer <= 0) {
+            startDodge(state)
         }
 
-        if (state.pokemon.health < state.pokemon.maxHealth * 0.2f) {
+        if (state.pokemon.health <= state.pokemon.maxHealth * FLEE_HEALTH_PERCENT) {
             state.state = STATE_FLEEING
         }
     }
 
-    private fun updateAttacking(state: BattleAIState, distance: Double) {
-        val pokemon = state.pokemon as? Mob ?: return
+    private fun tickAttack(state: AIState, dist: Double) {
+        faceEntity(state.pokemon, state.target)
 
-        if (state.attackCooldown <= 0) {
-            performAttack(state)
-            state.attackCooldown = 40 + (Math.random() * 40).toInt()
+        if (dist > ATTACK_RANGE * 1.5) {
+            state.state = STATE_CHASING
+            return
+        }
 
-            if (Math.random() < 0.3) {
-                startDodging(state)
+        performAttack(state)
+        state.cooldown = ATTACK_COOLDOWN_MIN + (Math.random() * (ATTACK_COOLDOWN_MAX - ATTACK_COOLDOWN_MIN)).toInt()
+
+        if (Math.random() < 0.35) {
+            startDodge(state)
+        }
+    }
+
+    private fun tickDodge(state: AIState) {
+        if (state.dodgeTimer <= 0) {
+            state.state = STATE_CHASING
+        }
+    }
+
+    private fun tickFlee(state: AIState, dist: Double) {
+        val mob = state.pokemon as? Mob ?: return
+
+        val awayX = state.pokemon.x - state.target.x
+        val awayZ = state.pokemon.z - state.target.z
+        val len = Math.sqrt(awayX * awayX + awayZ * awayZ)
+        if (len > 0) {
+            val fleeX = state.pokemon.x + (awayX / len) * FLEE_SPEED
+            val fleeZ = state.pokemon.z + (awayZ / len) * FLEE_SPEED
+            mob.navigation.moveTo(fleeX, state.pokemon.y, fleeZ, FLEE_SPEED)
+        }
+
+        if (dist > 20.0 || state.pokemon.health > state.pokemon.maxHealth * 0.5f) {
+            state.state = STATE_CHASING
+        }
+    }
+
+    private fun performAttack(state: AIState) {
+        val target = state.target
+        if (target is LivingEntity && target.isAlive) {
+            val source = state.pokemon.damageSources().mobAttack(state.pokemon)
+            target.hurt(source, ATTACK_DAMAGE)
+
+            if (state.pokemon.level() is ServerLevel) {
+                val level = state.pokemon.level() as ServerLevel
+                level.sendParticles(
+                    net.minecraft.core.particles.ParticleTypes.CRIT,
+                    target.x, target.y + target.boundingBox.yscale * 0.5, target.z,
+                    10, 0.3, 0.3, 0.3, 0.05
+                )
             }
         }
-
-        if (distance < 2.0) {
-            val away = pokemon.position().subtract(state.target.position()).normalize().scale(3.0)
-            pokemon.navigation.moveTo(
-                pokemon.x + away.x,
-                pokemon.y,
-                pokemon.z + away.z,
-                1.0
-            )
-        }
-
-        if (distance > 10.0) {
-            state.state = STATE_CHASING
-        }
     }
 
-    private fun updateDodging(state: BattleAIState, distance: Double) {
-        if (state.dodgeCooldown <= 0) {
-            state.state = STATE_CHASING
-        }
-    }
-
-    private fun updateFleeing(state: BattleAIState, distance: Double) {
-        val pokemon = state.pokemon as? Mob ?: return
-
-        val away = pokemon.position().subtract(state.target.position()).normalize().scale(10.0)
-        pokemon.navigation.moveTo(
-            pokemon.x + away.x,
-            pokemon.y,
-            pokemon.z + away.z,
-            1.5
-        )
-
-        if (distance > 25.0) {
-            state.state = STATE_CHASING
-        }
-    }
-
-    private fun startDodging(state: BattleAIState) {
+    private fun startDodge(state: AIState) {
         state.state = STATE_DODGING
-        state.dodgeCooldown = 20
+        state.dodgeTimer = DODGE_DURATION
 
         if (state.pokemon is LivingEntity) {
             state.pokemon.jumpFromGround()
         }
 
+        val mob = state.pokemon as? Mob ?: return
         val angle = Math.random() * Math.PI * 2
-        val dodgeX = Math.cos(angle) * 3
-        val dodgeZ = Math.sin(angle) * 3
-
-        if (state.pokemon is Mob) {
-            state.pokemon.navigation.moveTo(
-                state.pokemon.x + dodgeX,
-                state.pokemon.y,
-                state.pokemon.z + dodgeZ,
-                1.5
-            )
-        }
+        val dodgeX = state.pokemon.x + Math.cos(angle) * 3
+        val dodgeZ = state.pokemon.z + Math.sin(angle) * 3
+        mob.navigation.moveTo(dodgeX, state.pokemon.y, dodgeZ, 0.4)
     }
 
-    private fun performAttack(state: BattleAIState) {
-        val target = state.target
-
-        if (target is LivingEntity) {
-            target.hurt(
-                state.pokemon.damageSources().mobAttack(state.pokemon),
-                5.0f
-            )
-        }
+    private fun faceEntity(entity: LivingEntity, target: LivingEntity) {
+        val dx = target.x - entity.x
+        val dz = target.z - entity.z
+        entity.yRot = Math.toDegrees(atan2(-dx, dz)).toFloat()
     }
 
-    fun isInBattle(entity: net.minecraft.world.entity.Entity): Boolean {
-        return activeBattles.containsKey(entity.uuid)
-    }
+    fun isInBattle(entity: net.minecraft.world.entity.Entity) = activeBattles.containsKey(entity.uuid)
 
-    fun getState(entity: net.minecraft.world.entity.Entity): BattleAIState? {
-        return activeBattles[entity.uuid]
-    }
-
-    data class BattleAIState(
+    data class AIState(
         val pokemon: LivingEntity,
         val target: Player,
         var state: Int = STATE_IDLE,
-        val isWild: Boolean = true,
-        var attackCooldown: Int = 0,
-        var dodgeCooldown: Int = 0
+        var cooldown: Int = 0,
+        var dodgeTimer: Int = 0
     )
 }

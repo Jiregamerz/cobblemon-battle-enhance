@@ -1,121 +1,126 @@
 package com.battleenhance.camera
 
 import com.battleenhance.BattleEnhanceMod
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.CameraType
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.player.Player
 
 object CameraController {
-    private var isActive = false
-    private var targetEntity: net.minecraft.world.entity.Entity? = null
+    private var active = false
+    private var targetEntity: Entity? = null
+    private var originalPerspective: CameraType = CameraType.FIRST_PERSON
 
     private var currentX = 0.0
     private var currentY = 0.0
     private var currentZ = 0.0
     private var currentYaw = 0f
+    private var currentPitch = 0f
     private var transitionProgress = 0f
 
-    private const val CAMERA_DISTANCE = 5.0
-    private const val CAMERA_HEIGHT = 2.5
-    private const val TRANSITION_SPEED = 0.08f
-    private const val FOLLOW_SMOOTHNESS = 0.15f
-
-    private var originalPerspective: CameraType = CameraType.FIRST_PERSON
+    private const val CAMERA_DISTANCE = 4.0
+    private const val CAMERA_HEIGHT = 2.0
+    private const val CAMERA_PITCH = -8f
+    private const val TRANSITION_SPEED = 0.06f
+    private const val FOLLOW_SMOOTHNESS = 0.2f
+    private const val YAW_SMOOTHNESS = 0.15f
 
     fun register() {
-        END_CLIENT_TICK.register { client ->
-            if (BattleEnhanceMod.inBattle && !isActive) {
-                startBattleCamera()
-            } else if (!BattleEnhanceMod.inBattle && isActive) {
-                endBattleCamera()
+        ClientTickEvents.END_CLIENT_TICK.register { client ->
+            if (BattleEnhanceMod.inBattle && !active) {
+                val target = BattleEnhanceMod.controlledPokemon
+                if (target != null) {
+                    startBattle(target)
+                }
+            } else if (!BattleEnhanceMod.inBattle && active) {
+                endBattle()
             }
-            if (isActive) {
-                updateCamera(client)
+
+            if (active) {
+                tick(client)
             }
         }
     }
 
-    private fun startBattleCamera() {
+    fun startBattle(target: Entity) {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
 
-        val pokemonEntity = findBattlePokemon(player) ?: return
-
-        targetEntity = pokemonEntity
-        isActive = true
+        targetEntity = target
+        active = true
         transitionProgress = 0f
 
         originalPerspective = client.options.cameraType
-        client.options.cameraType = CameraType.THIRD_PERSON_BACK
+        if (client.options.cameraType != CameraType.THIRD_PERSON_BACK) {
+            client.options.cameraType = CameraType.THIRD_PERSON_BACK
+        }
 
         currentX = player.x
         currentY = player.y + CAMERA_HEIGHT
         currentZ = player.z - CAMERA_DISTANCE
-        currentYaw = player.yRot
+        currentYaw = target.yRot
+        currentPitch = CAMERA_PITCH
 
-        BattleEnhanceMod.LOGGER.info("Battle camera started")
+        BattleEnhanceMod.LOGGER.info("Camera: following ${target.name?.string}")
     }
 
-    private fun endBattleCamera() {
+    fun endBattle() {
         val client = Minecraft.getInstance()
 
-        isActive = false
+        active = false
         targetEntity = null
         transitionProgress = 0f
 
         client.options.cameraType = originalPerspective
-
-        BattleEnhanceMod.LOGGER.info("Battle camera ended")
     }
 
-    private fun updateCamera(client: Minecraft) {
-        val player = client.player ?: return
+    private fun tick(client: Minecraft) {
         val target = targetEntity ?: return
+        val player = client.player ?: return
 
-        if (!target.isAlive) {
-            endBattleCamera()
+        if (!target.isAlive || target.isRemoved) {
+            BattleEnhanceMod.endBattle()
             return
         }
 
-        val targetYaw = target.yRot.toDouble()
-        val behindX = target.x - Math.sin(Math.toRadians(targetYaw)) * CAMERA_DISTANCE
-        val behindZ = target.z + Math.cos(Math.toRadians(targetYaw)) * CAMERA_DISTANCE
+        val behindX = target.x - Math.sin(Math.toRadians(target.yRot.toDouble())) * CAMERA_DISTANCE
+        val behindZ = target.z + Math.cos(Math.toRadians(target.yRot.toDouble())) * CAMERA_DISTANCE
         val behindY = target.y + CAMERA_HEIGHT
 
         if (transitionProgress < 1f) {
             transitionProgress = Mth.clamp(transitionProgress + TRANSITION_SPEED, 0f, 1f)
         }
 
-        currentX = Mth.lerp(FOLLOW_SMOOTHNESS.toDouble(), currentX, behindX)
-        currentY = Mth.lerp(FOLLOW_SMOOTHNESS.toDouble(), currentY, behindY)
-        currentZ = Mth.lerp(FOLLOW_SMOOTHNESS.toDouble(), currentZ, behindZ)
+        val smooth = FOLLOW_SMOOTHNESS * transitionProgress.toDouble()
+        currentX = Mth.lerp(smooth, currentX, behindX)
+        currentY = Mth.lerp(smooth, currentY, behindY)
+        currentZ = Mth.lerp(smooth, currentZ, behindZ)
 
         val yawDiff = Mth.wrapDegrees(target.yRot - currentYaw)
-        currentYaw += yawDiff * FOLLOW_SMOOTHNESS
+        currentYaw += (yawDiff * YAW_SMOOTHNESS * transitionProgress).toFloat()
+        currentPitch = Mth.lerp(smooth, currentPitch, CAMERA_PITCH)
 
         client.cameraEntity?.let { cam ->
             cam.setPos(currentX, currentY, currentZ)
             cam.yRot = currentYaw
-            cam.xRot = -10f
+            cam.xRot = currentPitch
+            cam.yBob = 0f
+            cam.xBob = 0f
         }
     }
 
-    private fun findBattlePokemon(player: net.minecraft.world.entity.player.Player): net.minecraft.world.entity.Entity? {
+    fun findPlayerPokemon(player: Player): Entity? {
         val world = player.level()
-        val nearbyEntities = world.getEntities(
-            player,
-            player.boundingBox.inflate(32.0)
-        ) { entity ->
+        val nearby = world.getEntities(player, player.boundingBox.inflate(16.0)) { entity ->
             entity.javaClass.simpleName.contains("Pokemon") ||
+            entity.javaClass.name.contains("pokemon") ||
             entity.type.descriptionId.contains("pokemon")
         }
-
-        return nearbyEntities.minByOrNull { it.distanceToSqr(player) }
+        return nearby.minByOrNull { it.distanceToSqr(player) }
     }
 
-    fun start() { isActive = true }
-    fun stop() { isActive = false }
-    fun isActive(): Boolean = isActive
-    fun getTargetEntity() = targetEntity
+    fun isActive() = active
+    fun getTarget() = targetEntity
 }

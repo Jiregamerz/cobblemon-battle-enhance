@@ -1,6 +1,6 @@
 package com.battleenhance.mixin;
 
-import com.battleenhance.ai.PokemonAIManager;
+import com.battleenhance.BattleEnhanceMod;
 import net.minecraft.world.entity.Mob;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,10 +12,6 @@ public abstract class MobEntityMixin {
 
     @Inject(method = "registerGoals", at = @At("RETURN"))
     private void onInitGoals(CallbackInfo ci) {
-        Mob self = (Mob) (Object) this;
-
-        if (PokemonAIManager.INSTANCE.isInBattle(self)) {
-            // Clear existing goals and add battle-specific ones
-        }
+        // AI goals are managed by PokemonAIManager
     }
 }
