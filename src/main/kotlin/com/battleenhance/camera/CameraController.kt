@@ -1,7 +1,5 @@
 package com.battleenhance.camera
 
-import com.cobblemon.mod.common.api.events.battles.BattleStartedPostEvent
-import com.cobblemon.mod.common.api.events.battles.BattleEndedEvent
 import com.battleenhance.BattleEnhanceMod
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK
 import net.minecraft.client.Minecraft
@@ -26,22 +24,19 @@ object CameraController {
     private var originalPerspective: CameraType = CameraType.FIRST_PERSON
 
     fun register() {
-        BattleStartedPostEvent.EVENT.register { event ->
-            startBattleCamera(event)
-        }
-
-        BattleEndedEvent.EVENT.register {
-            endBattleCamera()
-        }
-
         END_CLIENT_TICK.register { client ->
+            if (BattleEnhanceMod.inBattle && !isActive) {
+                startBattleCamera()
+            } else if (!BattleEnhanceMod.inBattle && isActive) {
+                endBattleCamera()
+            }
             if (isActive) {
                 updateCamera(client)
             }
         }
     }
 
-    private fun startBattleCamera(event: BattleStartedPostEvent) {
+    private fun startBattleCamera() {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
 
@@ -52,7 +47,6 @@ object CameraController {
         transitionProgress = 0f
 
         originalPerspective = client.options.cameraType
-
         client.options.cameraType = CameraType.THIRD_PERSON_BACK
 
         currentX = player.x
@@ -78,6 +72,11 @@ object CameraController {
     private fun updateCamera(client: Minecraft) {
         val player = client.player ?: return
         val target = targetEntity ?: return
+
+        if (!target.isAlive) {
+            endBattleCamera()
+            return
+        }
 
         val targetYaw = target.yRot.toDouble()
         val behindX = target.x - Math.sin(Math.toRadians(targetYaw)) * CAMERA_DISTANCE
@@ -115,6 +114,8 @@ object CameraController {
         return nearbyEntities.minByOrNull { it.distanceToSqr(player) }
     }
 
+    fun start() { isActive = true }
+    fun stop() { isActive = false }
     fun isActive(): Boolean = isActive
     fun getTargetEntity() = targetEntity
 }

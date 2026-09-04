@@ -12,13 +12,12 @@ object BattleEnhanceMod : ModInitializer {
     const val MOD_ID = "battleenhance"
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
 
+    var inBattle = false
+
     override fun onInitialize() {
         LOGGER.info("Battle Enhance initializing...")
 
         BattleEnhanceNetworking.register()
-        CameraController.register()
-        PokemonAIManager.register()
-        BattleHUDRenderer.register()
         BattleKeybindings.register()
 
         LOGGER.info("Battle Enhance initialized!")

@@ -9,17 +9,16 @@
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.battleenhance.BattleEnhanceMod"],
-    "client": ["com.battleenhance.BattleEnhanceClient"]
+    "main": ["com.battleenhance.BattleEnhanceMod"]
   },
   "mixins": ["battle-enhance.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.5",
     "fabric-language-kotlin": ">=1.13.10",
-    "cobblemon": "*",
     "minecraft": "~1.21.1"
   },
   "suggests": {
-    "fabric-api": "*"
+    "fabric-api": "*",
+    "cobblemon": "*"
   }
 }

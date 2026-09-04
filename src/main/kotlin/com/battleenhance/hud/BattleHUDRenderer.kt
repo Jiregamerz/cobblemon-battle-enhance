@@ -1,13 +1,11 @@
 package com.battleenhance.hud
 
-import com.cobblemon.mod.common.api.events.battles.BattleStartedPostEvent
-import com.cobblemon.mod.common.api.events.battles.BattleEndedEvent
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
-import net.minecraft.util.DeltaTracker
+import net.minecraft.client.DeltaTracker
 import net.minecraft.world.entity.LivingEntity
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -25,14 +23,6 @@ object BattleHUDRenderer {
     private const val COLOR_HEAL = 0x44FF44
 
     fun register() {
-        BattleStartedPostEvent.EVENT.register { event ->
-            startHUD(event)
-        }
-
-        BattleEndedEvent.EVENT.register {
-            endHUD()
-        }
-
         HudRenderCallback.EVENT.register { context, tickCounter ->
             if (isActive) {
                 render(context)
@@ -40,32 +30,20 @@ object BattleHUDRenderer {
         }
     }
 
-    private fun startHUD(event: BattleStartedPostEvent) {
+    fun start() {
         isActive = true
         hpBars.clear()
         damageNumbers.clear()
-
-        val battle = event.battle
-        for (pokemon in battle.activePokemon) {
-            val entity = pokemon.entity ?: continue
-            val name = pokemon.name
-            val hp = pokemon.currentHealth.toFloat()
-            val maxHp = pokemon.maxHealth.toFloat()
-
-            hpBars.add(HPBarData(
-                entity = entity,
-                name = name,
-                health = hp,
-                maxHealth = maxHp,
-                isWild = entity.ownerUUID == null
-            ))
-        }
     }
 
-    private fun endHUD() {
+    fun stop() {
         isActive = false
         hpBars.clear()
         damageNumbers.clear()
+    }
+
+    fun addHPBar(entity: LivingEntity, name: Component, health: Float, maxHealth: Float, isWild: Boolean) {
+        hpBars.add(HPBarData(entity, name, health, maxHealth, isWild))
     }
 
     private fun render(context: GuiGraphics) {

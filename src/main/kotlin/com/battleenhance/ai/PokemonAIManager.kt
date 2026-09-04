@@ -1,12 +1,8 @@
 package com.battleenhance.ai
 
 import com.battleenhance.BattleEnhanceMod
-import com.cobblemon.mod.common.api.events.battles.BattleStartedPostEvent
-import com.cobblemon.mod.common.api.events.battles.BattleEndedEvent
-import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.ai.goal.GoalSelector
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.player.Player
 import java.util.UUID
@@ -22,49 +18,34 @@ object PokemonAIManager {
     const val STATE_FLEEING = 4
 
     fun register() {
-        BattleStartedPostEvent.EVENT.register { event ->
-            startAIForBattle(event)
-        }
-
-        BattleEndedEvent.EVENT {
-            endAIForBattle()
-        }
-
-        ServerTickEvents.END_SERVER_TICK.register { server ->
+        ServerTickEvents.END_SERVER_TICK.register {
             activeBattles.forEach { (_, state) ->
                 updateAI(state)
             }
-        }
-    }
 
-    private fun startAIForBattle(event: BattleStartedPostEvent) {
-        val battle = event.battle
-        val isWildBattle = battle.isWildBattle
-
-        if (isWildBattle) {
-            val wildPokemon = findWildPokemon(battle) ?: return
-            val targetPlayer = findTargetPlayer(battle) ?: return
-
-            val state = BattleAIState(
-                pokemon = wildPokemon,
-                target = targetPlayer,
-                state = STATE_CHASING,
-                isWild = true
-            )
-
-            activeBattles[wildPokemon.uuid] = state
-            BattleEnhanceMod.LOGGER.info("AI started for wild Pokemon: ${wildPokemon.name?.string}")
-        }
-    }
-
-    private fun endAIForBattle() {
-        val iterator = activeBattles.entries.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (!entry.value.target.isAlive || entry.value.pokemon.isRemoved) {
-                iterator.remove()
+            val iterator = activeBattles.entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (!entry.value.target.isAlive || entry.value.pokemon.isRemoved) {
+                    iterator.remove()
+                }
             }
         }
+    }
+
+    fun startBattle(pokemon: LivingEntity, target: Player) {
+        val state = BattleAIState(
+            pokemon = pokemon,
+            target = target,
+            state = STATE_CHASING,
+            isWild = true
+        )
+        activeBattles[pokemon.uuid] = state
+        BattleEnhanceMod.LOGGER.info("AI started for Pokemon: ${pokemon.name?.string}")
+    }
+
+    fun endAllBattles() {
+        activeBattles.clear()
     }
 
     private fun updateAI(state: BattleAIState) {
@@ -90,9 +71,8 @@ object PokemonAIManager {
 
     private fun updateChasing(state: BattleAIState, distance: Double) {
         val pokemon = state.pokemon as? Mob ?: return
-        val target = state.target
 
-        pokemon.navigation.moveTo(target, 1.2)
+        pokemon.navigation.moveTo(state.target, 1.2)
 
         if (distance < 4.0) {
             state.state = STATE_ATTACKING
@@ -109,7 +89,6 @@ object PokemonAIManager {
 
     private fun updateAttacking(state: BattleAIState, distance: Double) {
         val pokemon = state.pokemon as? Mob ?: return
-        val target = state.target
 
         if (state.attackCooldown <= 0) {
             performAttack(state)
@@ -121,7 +100,7 @@ object PokemonAIManager {
         }
 
         if (distance < 2.0) {
-            val away = pokemon.position().subtract(target.position()).normalize().scale(3.0)
+            val away = pokemon.position().subtract(state.target.position()).normalize().scale(3.0)
             pokemon.navigation.moveTo(
                 pokemon.x + away.x,
                 pokemon.y,
@@ -143,9 +122,8 @@ object PokemonAIManager {
 
     private fun updateFleeing(state: BattleAIState, distance: Double) {
         val pokemon = state.pokemon as? Mob ?: return
-        val target = state.target
 
-        val away = pokemon.position().subtract(target.position()).normalize().scale(10.0)
+        val away = pokemon.position().subtract(state.target.position()).normalize().scale(10.0)
         pokemon.navigation.moveTo(
             pokemon.x + away.x,
             pokemon.y,
@@ -189,22 +167,6 @@ object PokemonAIManager {
                 5.0f
             )
         }
-    }
-
-    private fun findWildPokemon(battle: com.cobblemon.mod.common.api.battles.model.PokemonBattle): PokemonEntity? {
-        val activePokemon = battle.activePokemon
-        for (pokemon in activePokemon) {
-            val entity = pokemon.entity
-            if (entity is PokemonEntity && entity.ownerUUID == null) {
-                return entity
-            }
-        }
-        return null
-    }
-
-    private fun findTargetPlayer(battle: com.cobblemon.mod.common.api.battles.model.PokemonBattle): Player? {
-        val actor = battle.actors.firstOrNull()
-        return actor?.player
     }
 
     fun isInBattle(entity: net.minecraft.world.entity.Entity): Boolean {
