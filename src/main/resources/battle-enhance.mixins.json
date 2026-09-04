@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.battleenhance.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PlayerEntityMixin",
+    "MobEntityMixin"
+  ],
+  "client": [
+    "ClientPlayerEntityMixin",
+    "GameRendererMixin",
+    "InGameHudMixin",
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

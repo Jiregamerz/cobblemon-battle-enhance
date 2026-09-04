@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "battleenhance",
+  "version": "${version}",
+  "name": "Cobblemon Battle Enhance",
+  "description": "Enhanced Pokemon battles with camera transitions, real-time AI, and HUD",
+  "authors": ["You"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.battleenhance.BattleEnhanceMod"],
+    "client": ["com.battleenhance.BattleEnhanceClient"]
+  },
+  "mixins": ["battle-enhance.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "fabric-language-kotlin": ">=1.13.10",
+    "cobblemon": "*",
+    "minecraft": "~1.21.1"
+  },
+  "suggests": {
+    "fabric-api": "*"
+  }
+}
