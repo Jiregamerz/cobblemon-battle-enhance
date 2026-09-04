@@ -2,57 +2,68 @@ package com.battleenhance.network
 
 import com.battleenhance.BattleEnhanceMod
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
-import net.minecraft.util.Identifier
+import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.codec.StreamCodec
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload
+import net.minecraft.resources.ResourceLocation
 
-/**
- * Handles network communication for battle enhancements
- */
 object BattleEnhanceNetworking {
-    val ATTACK_PACKET = Identifier.of(BattleEnhanceMod.MOD_ID, "attack")
-    val DODGE_PACKET = Identifier.of(BattleEnhanceMod.MOD_ID, "dodge")
-    val MOVE_SELECT_PACKET = Identifier.of(BattleEnhanceMod.MOD_ID, "move_select")
+    private val ATTACK_ID = ResourceLocation.fromNamespaceAndPath(BattleEnhanceMod.MOD_ID, "attack")
+    private val DODGE_ID = ResourceLocation.fromNamespaceAndPath(BattleEnhanceMod.MOD_ID, "dodge")
+
+    data class AttackPayload(val moveIndex: Int) : CustomPacketPayload {
+        override fun type() = ATTACK_TYPE
+        companion object {
+            val ATTACK_TYPE = CustomPacketPayload.Type<AttackPayload>(ATTACK_ID)
+            val CODEC: StreamCodec<FriendlyByteBuf, AttackPayload> = StreamCodec.of(
+                { buf, payload -> buf.writeInt(payload.moveIndex) },
+                { buf -> AttackPayload(buf.readInt()) }
+            )
+        }
+    }
+
+    data class DodgePayload(val dummy: Boolean = true) : CustomPacketPayload {
+        override fun type() = DODGE_TYPE
+        companion object {
+            val DODGE_TYPE = CustomPacketPayload.Type<DodgePayload>(DODGE_ID)
+            val CODEC: StreamCodec<FriendlyByteBuf, DodgePayload> = StreamCodec.of(
+                { _, _ -> },
+                { DodgePayload() }
+            )
+        }
+    }
 
     fun register() {
-        // Register server-side packet handlers
-        ServerPlayNetworking.registerGlobalReceiver(ATTACK_PACKET) { server, player, handler, buf, responseSender ->
-            val moveIndex = buf.readInt()
-            server.execute {
-                // Handle attack
-                BattleEnhanceMod.LOGGER.info("Player ${player.name.string} used move $moveIndex")
+        PayloadTypeRegistry.playC2S().register(AttackPayload.ATTACK_TYPE, AttackPayload.CODEC)
+        PayloadTypeRegistry.playC2S().register(DodgePayload.DODGE_TYPE, DodgePayload.CODEC)
+
+        ServerPlayNetworking.registerGlobalReceiver(AttackPayload.ATTACK_TYPE) { payload, context ->
+            val moveIndex = payload.moveIndex
+            context.server().execute {
+                BattleEnhanceMod.LOGGER.info("Player ${context.player().name.string} used move $moveIndex")
             }
         }
 
-        ServerPlayNetworking.registerGlobalReceiver(DODGE_PACKET) { server, player, handler, buf, responseSender ->
-            server.execute {
-                // Handle dodge
-                BattleEnhanceMod.LOGGER.info("Player ${player.name.string} dodged")
+        ServerPlayNetworking.registerGlobalReceiver(DodgePayload.DODGE_TYPE) { _, context ->
+            context.server().execute {
+                BattleEnhanceMod.LOGGER.info("Player ${context.player().name.string} dodged")
             }
         }
 
-        // Register client-side packet handlers (for receiving from server)
-        ClientPlayNetworking.registerGlobalReceiver(ATTACK_PACKET) { client, handler, buf, responseSender ->
-            val entityId = buf.readInt()
-            val damage = buf.readFloat()
-            client.execute {
+        ClientPlayNetworking.registerGlobalReceiver(AttackPayload.ATTACK_TYPE) { _, context ->
+            context.client().execute {
                 // Handle attack animation/effect on client
             }
         }
     }
 
-    /**
-     * Send attack packet to server
-     */
     fun sendAttack(moveIndex: Int) {
-        ClientPlayNetworking.send(ATTACK_PACKET) { buf ->
-            buf.writeInt(moveIndex)
-        }
+        ClientPlayNetworking.send(AttackPayload(moveIndex))
     }
 
-    /**
-     * Send dodge packet to server
-     */
     fun sendDodge() {
-        ClientPlayNetworking.send(DODGE_PACKET) {}
+        ClientPlayNetworking.send(DodgePayload())
     }
 }

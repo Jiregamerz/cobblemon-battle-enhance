@@ -1,31 +1,28 @@
 package com.battleenhance.mixin;
 
 import com.battleenhance.camera.CameraController;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.CameraType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Mixin to handle Minecraft client state during battles
- */
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public abstract class MinecraftClientMixin {
 
-    @Inject(method = "runTick", at = @At("HEAD"))
-    private void onRunTick(boolean tick, CallbackInfo ci) {
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onRunTick(CallbackInfo ci) {
         // Handle game logic during battle
     }
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void onRender(boolean tick, CallbackInfo ci) {
-        MinecraftClient self = (MinecraftClient) (Object) this;
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onRender(CallbackInfo ci) {
+        Minecraft self = (Minecraft) (Object) this;
 
         if (CameraController.INSTANCE.isActive()) {
-            // Force third-person view during battle
-            if (self.options.getPerspective() != net.minecraft.client.option.Perspective.THIRD_PERSON_BACK) {
-                self.options.setPerspective(net.minecraft.client.option.Perspective.THIRD_PERSON_BACK);
+            if (self.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
+                self.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             }
         }
     }

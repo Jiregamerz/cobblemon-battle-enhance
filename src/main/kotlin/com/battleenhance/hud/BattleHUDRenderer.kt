@@ -3,26 +3,18 @@ package com.battleenhance.hud
 import com.cobblemon.mod.common.api.events.battles.BattleStartedPostEvent
 import com.cobblemon.mod.common.api.events.battles.BattleEndedEvent
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.render.RenderLayer
-import net.minecraft.entity.LivingEntity
-import net.minecraft.text.Text
-import net.minecraft.util.Formatting
-import net.minecraft.util.math.ColorHelper
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
+import net.minecraft.ChatFormatting
+import net.minecraft.world.entity.LivingEntity
 import java.util.concurrent.ConcurrentLinkedQueue
 
-/**
- * Renders battle HUD elements
- * Shows HP bars and floating damage numbers
- */
 object BattleHUDRenderer {
     private var isActive = false
     private val damageNumbers = ConcurrentLinkedQueue<DamageNumberData>()
     private val hpBars = mutableListOf<HPBarData>()
 
-    // Colors
     private const val COLOR_HP_GREEN = 0xFF00
     private const val COLOR_HP_YELLOW = 0xFFFF00
     private const val COLOR_HP_RED = 0xFF0000
@@ -32,16 +24,14 @@ object BattleHUDRenderer {
     private const val COLOR_HEAL = 0x44FF44
 
     fun register() {
-        // Listen for battle events
         BattleStartedPostEvent.EVENT.register { event ->
             startHUD(event)
         }
 
-        BattleEndedEvent.EVENT.register { event ->
+        BattleEndedEvent.EVENT.register {
             endHUD()
         }
 
-        // Register HUD render callback
         HudRenderCallback.EVENT.register { context, tickCounter ->
             if (isActive) {
                 render(context)
@@ -54,7 +44,6 @@ object BattleHUDRenderer {
         hpBars.clear()
         damageNumbers.clear()
 
-        // Add HP bars for active Pokemon
         val battle = event.battle
         for (pokemon in battle.activePokemon) {
             val entity = pokemon.entity ?: continue
@@ -78,19 +67,17 @@ object BattleHUDRenderer {
         damageNumbers.clear()
     }
 
-    private fun render(context: DrawContext) {
-        val client = MinecraftClient.getInstance()
+    private fun render(context: GuiGraphics) {
+        val client = Minecraft.getInstance()
         val player = client.player ?: return
-        val textRenderer = client.textRenderer
-        val screenWidth = client.window.scaledWidth
-        val screenHeight = client.window.scaledHeight
+        val textRenderer = client.font
+        val screenWidth = client.window.guiScaledWidth
+        val screenHeight = client.window.guiScaledHeight
 
-        // Render HP bars
         for (bar in hpBars) {
             renderHPBar(context, bar, screenWidth, screenHeight)
         }
 
-        // Render damage numbers
         val iterator = damageNumbers.iterator()
         while (iterator.hasNext()) {
             val num = iterator.next()
@@ -103,74 +90,61 @@ object BattleHUDRenderer {
         }
     }
 
-    private fun renderHPBar(context: DrawContext, bar: HPBarData, screenWidth: Int, screenHeight: Int) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    private fun renderHPBar(context: GuiGraphics, bar: HPBarData, screenWidth: Int, screenHeight: Int) {
+        val textRenderer = Minecraft.getInstance().font
 
-        // Position at top of screen
         val barWidth = 120
         val barHeight = 8
         val x = (screenWidth - barWidth) / 2
         val y = 30
 
-        // Background
         context.fill(x - 2, y - 2, x + barWidth + 2, y + barHeight + 2, COLOR_HP_BORDER)
         context.fill(x, y, x + barWidth, y + barHeight, COLOR_HP_BG)
 
-        // HP percentage
         val hpPercent = bar.health / bar.maxHealth
 
-        // Color based on HP
         val hpColor = when {
             hpPercent > 0.5f -> COLOR_HP_GREEN
             hpPercent > 0.2f -> COLOR_HP_YELLOW
             else -> COLOR_HP_RED
         }
 
-        // Filled bar
         val filledWidth = (barWidth * hpPercent).toInt()
         context.fill(x, y, x + filledWidth, y + barHeight, hpColor)
 
-        // Name
         val nameText = bar.name
         val hpText = "%.0f / %.0f".format(bar.health, bar.maxHealth)
 
-        context.drawTextWithShadow(textRenderer, Text.literal(nameText), x, y - 12, 0xFFFFFF)
-        context.drawTextWithShadow(textRenderer, Text.literal(hpText), x + barWidth + 5, y, 0xAAAAAA)
+        context.drawString(textRenderer, Component.literal(nameText), x, y - 12, 0xFFFFFF, true)
+        context.drawString(textRenderer, Component.literal(hpText), x + barWidth + 5, y, 0xAAAAAA, true)
 
-        // Wild indicator
         if (bar.isWild) {
-            context.drawTextWithShadow(textRenderer, Text.literal("(Wild)"), x, y + barHeight + 4, 0xAAAAAA)
+            context.drawString(textRenderer, Component.literal("(Wild)"), x, y + barHeight + 4, 0xAAAAAA, true)
         }
     }
 
-    private fun renderDamageNumber(context: DrawContext, num: DamageNumberData, elapsed: Long, screenWidth: Int, screenHeight: Int) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    private fun renderDamageNumber(context: GuiGraphics, num: DamageNumberData, elapsed: Long, screenWidth: Int, screenHeight: Int) {
+        val textRenderer = Minecraft.getInstance().font
 
-        // Position
         val screenX = screenWidth / 2 + ((Math.random() - 0.5) * 30).toInt()
         val screenY = screenHeight / 2 - 50 - (elapsed * 0.03).toInt()
 
-        // Format
         val text = if (num.amount > 0) "-%.0f".format(num.amount) else "+%.0f".format(-num.amount)
         val color = if (num.amount > 0) COLOR_DAMAGE else COLOR_HEAL
 
-        // Fade out
         val alpha = (1.0 - elapsed / 2000.0).coerceIn(0.0, 1.0)
         val drawColor = ((alpha * 255).toInt() shl 24) or (color and 0x00FFFFFF)
 
-        // Draw with bold
-        context.drawTextWithShadow(
+        context.drawString(
             textRenderer,
-            Text.literal(text).formatted(Formatting.BOLD),
+            Component.literal(text).withStyle(ChatFormatting.BOLD),
             screenX,
             screenY,
-            drawColor
+            drawColor,
+            true
         )
     }
 
-    /**
-     * Add a floating damage number
-     */
     fun addDamageNumber(entity: LivingEntity, amount: Float, isCritical: Boolean = false) {
         damageNumbers.add(DamageNumberData(
             entity = entity,
@@ -180,9 +154,6 @@ object BattleHUDRenderer {
         ))
     }
 
-    /**
-     * Update HP bar for an entity
-     */
     fun updateHP(entity: LivingEntity, newHealth: Float) {
         hpBars.find { it.entity == entity }?.let {
             it.health = newHealth
@@ -191,7 +162,7 @@ object BattleHUDRenderer {
 
     data class HPBarData(
         val entity: LivingEntity,
-        val name: String,
+        val name: Component,
         var health: Float,
         val maxHealth: Float,
         val isWild: Boolean
