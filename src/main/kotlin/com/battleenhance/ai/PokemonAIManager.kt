@@ -71,7 +71,7 @@ object PokemonAIManager {
 
         val pokemon = state.pokemon
         val target = state.target
-        val dist = pokemon.distanceTo(target)
+        val dist = pokemon.distanceTo(target).toDouble()
 
         when (state.state) {
             STATE_CHASING -> tickChase(state, dist)
@@ -95,7 +95,7 @@ object PokemonAIManager {
             startDodge(state)
         }
 
-        if (state.pokemon.health <= state.pokemon.maxHealth * FLEE_HEALTH_PERCENT) {
+        if (state.pokemon.health <= state.pokemon.maxHealth.toDouble() * FLEE_HEALTH_PERCENT) {
             state.state = STATE_FLEEING
         }
     }
@@ -149,7 +149,7 @@ object PokemonAIManager {
                 val level = state.pokemon.level() as ServerLevel
                 level.sendParticles(
                     net.minecraft.core.particles.ParticleTypes.CRIT,
-                    target.x, target.y + target.boundingBox.yscale * 0.5, target.z,
+                    target.x, target.y + 1.0, target.z,
                     10, 0.3, 0.3, 0.3, 0.05
                 )
             }

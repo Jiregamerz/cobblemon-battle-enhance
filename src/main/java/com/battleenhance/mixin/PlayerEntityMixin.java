@@ -3,6 +3,7 @@ package com.battleenhance.mixin;
 import com.battleenhance.BattleEnhanceMod;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -23,8 +24,9 @@ public abstract class PlayerEntityMixin {
             double dz = 0;
 
             var options = net.minecraft.client.Minecraft.getInstance().options;
-            var forward = net.minecraft.world.phys.Vec3.fromPitchAndYaw(0, self.getYRot());
-            var right = net.minecraft.world.phys.Vec3.fromPitchAndYaw(0, self.getYRot() + 90);
+            double yRot = self.getYRot();
+            Vec3 forward = new Vec3(-Math.sin(Math.toRadians(yRot)), 0, Math.cos(Math.toRadians(yRot)));
+            Vec3 right = new Vec3(-Math.sin(Math.toRadians(yRot + 90)), 0, Math.cos(Math.toRadians(yRot + 90)));
 
             if (options.keyUp.isDown()) { dx += forward.x; dz += forward.z; }
             if (options.keyDown.isDown()) { dx -= forward.x; dz -= forward.z; }

@@ -91,19 +91,11 @@ object BattleHUDRenderer {
 
     private fun renderEnemyAIStatus(context: GuiGraphics, sw: Int, font: net.minecraft.client.gui.Font) {
         val enemy = BattleEnhanceMod.battleTarget ?: return
-        val state = com.battleenhance.ai.PokemonAIManager.getState(enemy) ?: return
-
-        val stateName = when (state.state) {
-            1 -> "Chasing"
-            2 -> "Attacking"
-            3 -> "Dodging"
-            4 -> "Fleeing"
-            else -> "Idle"
-        }
+        if (!enemy.isAlive) return
 
         val x = sw / 2 - 40
         val y = 80
-        context.drawString(font, Component.literal("AI: $stateName").withStyle(ChatFormatting.GRAY),
+        context.drawString(font, Component.literal("Enemy: Active").withStyle(ChatFormatting.GRAY),
             x, y, 0xAAAAAA, true)
     }
 

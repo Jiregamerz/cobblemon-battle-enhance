@@ -80,15 +80,11 @@ object BattleEnhanceNetworking {
                 val server = context.server()
 
                 var target: net.minecraft.world.entity.LivingEntity? = null
-                for (player in server.playerList.playerInstances) {
-                    val entities = player.level().entities().getAll()
-                    for (e in entities) {
-                        if (e is net.minecraft.world.entity.LivingEntity && e.id == payload.targetId) {
-                            target = e
-                            break
-                        }
-                    }
-                    if (target != null) break
+                val serverPlayer = context.player() as net.minecraft.server.level.ServerPlayer
+                val level = serverPlayer.serverLevel()
+                val entity = level.getEntity(payload.targetId)
+                if (entity is net.minecraft.world.entity.LivingEntity) {
+                    target = entity
                 }
 
                 if (target != null) {

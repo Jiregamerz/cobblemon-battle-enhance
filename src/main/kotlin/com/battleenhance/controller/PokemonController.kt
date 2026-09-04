@@ -18,8 +18,8 @@ object PokemonController {
             val player = client.player ?: return@register
             val options = client.options
 
-            val forward = Vec3.fromPitchAndYaw(0f, player.yRot)
-            val right = Vec3.fromPitchAndYaw(0f, player.yRot + 90f)
+            val forward = Vec3(-Math.sin(Math.toRadians(player.yRot.toDouble())), 0.0, Math.cos(Math.toRadians(player.yRot.toDouble())))
+            val right = Vec3(-Math.sin(Math.toRadians((player.yRot + 90).toDouble())), 0.0, Math.cos(Math.toRadians((player.yRot + 90).toDouble())))
 
             var moveX = 0.0
             var moveZ = 0.0

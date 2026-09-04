@@ -1,7 +1,6 @@
 package com.battleenhance.integration
 
 import com.battleenhance.BattleEnhanceMod
-import net.fabricmc.loader.FabricLoader
 import net.minecraft.world.entity.LivingEntity
 import java.lang.reflect.Method
 
@@ -17,7 +16,7 @@ object CobblemonBridge {
         if (initialized) return
         initialized = true
 
-        cobblemonLoaded = FabricLoader.getInstance().isModLoaded("cobblemon")
+        cobblemonLoaded = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("cobblemon")
         if (!cobblemonLoaded) {
             BattleEnhanceMod.LOGGER.info("Cobblemon not found - battle enhance will not auto-trigger")
             return
