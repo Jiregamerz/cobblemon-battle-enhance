@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
+import net.minecraft.util.DeltaTracker
 import net.minecraft.world.entity.LivingEntity
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -72,10 +73,9 @@ object BattleHUDRenderer {
         val player = client.player ?: return
         val textRenderer = client.font
         val screenWidth = client.window.guiScaledWidth
-        val screenHeight = client.window.guiScaledHeight
 
         for (bar in hpBars) {
-            renderHPBar(context, bar, screenWidth, screenHeight)
+            renderHPBar(context, bar, screenWidth)
         }
 
         val iterator = damageNumbers.iterator()
@@ -86,11 +86,11 @@ object BattleHUDRenderer {
                 iterator.remove()
                 continue
             }
-            renderDamageNumber(context, num, elapsed, screenWidth, screenHeight)
+            renderDamageNumber(context, num, elapsed, screenWidth)
         }
     }
 
-    private fun renderHPBar(context: GuiGraphics, bar: HPBarData, screenWidth: Int, screenHeight: Int) {
+    private fun renderHPBar(context: GuiGraphics, bar: HPBarData, screenWidth: Int) {
         val textRenderer = Minecraft.getInstance().font
 
         val barWidth = 120
@@ -112,10 +112,9 @@ object BattleHUDRenderer {
         val filledWidth = (barWidth * hpPercent).toInt()
         context.fill(x, y, x + filledWidth, y + barHeight, hpColor)
 
-        val nameText = bar.name
         val hpText = "%.0f / %.0f".format(bar.health, bar.maxHealth)
 
-        context.drawString(textRenderer, Component.literal(nameText), x, y - 12, 0xFFFFFF, true)
+        context.drawString(textRenderer, bar.name, x, y - 12, 0xFFFFFF, true)
         context.drawString(textRenderer, Component.literal(hpText), x + barWidth + 5, y, 0xAAAAAA, true)
 
         if (bar.isWild) {
@@ -123,11 +122,11 @@ object BattleHUDRenderer {
         }
     }
 
-    private fun renderDamageNumber(context: GuiGraphics, num: DamageNumberData, elapsed: Long, screenWidth: Int, screenHeight: Int) {
+    private fun renderDamageNumber(context: GuiGraphics, num: DamageNumberData, elapsed: Long, screenWidth: Int) {
         val textRenderer = Minecraft.getInstance().font
 
         val screenX = screenWidth / 2 + ((Math.random() - 0.5) * 30).toInt()
-        val screenY = screenHeight / 2 - 50 - (elapsed * 0.03).toInt()
+        val screenY = 200 - 50 - (elapsed * 0.03).toInt()
 
         val text = if (num.amount > 0) "-%.0f".format(num.amount) else "+%.0f".format(-num.amount)
         val color = if (num.amount > 0) COLOR_DAMAGE else COLOR_HEAL

@@ -8,14 +8,12 @@ import com.battleenhance.network.BattleEnhanceNetworking
 import net.fabricmc.api.ModInitializer
 import org.slf4j.LoggerFactory
 
-object BattleEnhanceMod {
+object BattleEnhanceMod : ModInitializer {
     const val MOD_ID = "battleenhance"
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
-}
 
-class BattleEnhanceMod : ModInitializer {
     override fun onInitialize() {
-        BattleEnhanceMod.LOGGER.info("Battle Enhance initializing...")
+        LOGGER.info("Battle Enhance initializing...")
 
         BattleEnhanceNetworking.register()
         CameraController.register()
@@ -23,6 +21,6 @@ class BattleEnhanceMod : ModInitializer {
         BattleHUDRenderer.register()
         BattleKeybindings.register()
 
-        BattleEnhanceMod.LOGGER.info("Battle Enhance initialized!")
+        LOGGER.info("Battle Enhance initialized!")
     }
 }
