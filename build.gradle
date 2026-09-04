@@ -9,6 +9,14 @@ group = project.maven_group
 
 repositories {
     mavenCentral()
+    maven {
+        name = 'Cobblemon'
+        url = 'https://repo.cobblemon.com/releases'
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
 }
 
 loom {
