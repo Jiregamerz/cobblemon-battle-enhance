@@ -163,7 +163,7 @@ object PokemonAIManager {
 
         if (target is LivingEntity) {
             target.hurt(
-                state.pokemon.damageSources.mobAttack(state.pokemon),
+                state.pokemon.damageSources().mobAttack(state.pokemon),
                 5.0f
             )
         }
